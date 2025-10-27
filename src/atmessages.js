@@ -1,26 +1,33 @@
 //Global definitions
+/* 
+   Solicited messages 
+   Example: 22*012**000*C*C01
+*/
+
 const solicitedMsgStructure = [
-  { description: "Message class and sub-class" },
-  { description: "Logical unit number" },
-  { description: "N/A" },
-  { description: "Time variant number" },
+  { field: "messageClass", description: "Message class and sub-class" },
+  { field: "atmCode", description: "Logical unit number" },
+  { field: "reserved", description: "Reserved" },
+  { field: "timeVariant", description: "Time variant number" },
   {
+    field: "statusDescriptor",
     description: "Status descriptor",
-    status: {
-      "8": "Device fault",
-      "9": "Ready",
-      "A": "Command reject",
-      "B": "Ready",
-      "C": "Specific command reject",
-      "F": "Terminal state",
+    "8": { error: "Device fault" },
+    "9": { error: "Ready" },
+    "A": { error: "Command reject" },
+    "B": { error: "Ready" },
+    "C": {
+      error: "Specific command reject",
+      "01": "Message type only accepted while SST is In-Service",
+      "02": "Message not accepted while diagnostics is in progress"
     },
-  },
+    "F": { error: "Terminal state" }
+  }
 ];
 
 //Functions
 export function parseMessage(btn) {
-  btn.addEventListener("click", () => {
-    // Get message
+  btn.addEventListener("click", () => {    // Get message
     const msg = document.querySelector("#input").value;
     // Split messages by field separator
     const msgBlock = msg.split("*");
@@ -46,10 +53,23 @@ export function parseMessage(btn) {
 function solicitedStatusMessages(message) {
   // HTML output ID
   const output = document.querySelector("#output");
-  // Get status descriptor field from message
-  const statusDescriptor = message[4];
-  // HTML render 
-  for(let i = 0; i < message.length; i++){
-    output.innerHTML += `<p>${message[i]} -> ${solicitedMsgStructure[i].description}</p>`;
-  }
+  let statusMessage;
+  message.forEach((element, index) => {
+    const fieldStructure = solicitedMsgStructure[index]; // Get fields from the JSON    
+    // Reserved values
+    if(!element){
+      element = "Empty"
+    }
+    // 22*010**000*C*01
+    if(fieldStructure.field === "statusDescriptor" && element){
+      console.log("element ", element);//C
+      const code = fieldStructure[element]; 
+      statusMessage = code.error;
+      /*console.log("code", code); // 
+      console.log("dat1 ", code.error); // Specific command reject
+      console.log("dat2 ", code["01"]); // Message type only accepted while SST is In-Service*/
+    }
+    let result = `<p> <strong>${element}</strong> -> ${fieldStructure.description} -> ${statusMessage || ''}</p>`;
+    output.innerHTML += result;
+  });
 }
